@@ -5,6 +5,7 @@
 
 using namespace std;
 
+
 typedef struct Adj_w{       // US vertex의 멤버로 한 user가 사용한 모든 word 를 point하기 위해 linked list 이용
     char word[100];
     struct Adj_w* next;
@@ -76,6 +77,7 @@ typedef struct US_info      //US vertex
     char id[50];
     char name[50];
     int tweetnum;
+    int frdnum;
     Adj_w* wd; // user가 사용한 모든 단어들은 linked list로 저장한다.
     Adj_fr* frd;
 }US_info;
@@ -87,6 +89,7 @@ void init_US(US_info* self)
     strcpy(self->id,"");
     strcpy(self->name,"");
     self->tweetnum=0;
+    self->frdnum=0;
 
     Adj_w* a = (Adj_w*)malloc(sizeof(Adj_w));
     init_Adj_w(a);
@@ -157,10 +160,142 @@ void add_hash_w(Adj_h_w* self, WD_info* w)
     self->next = a;
 }
 
+
+
+
+
+/////////////////////// Interface function
+typedef struct BinaryTree
+{
+    struct BinaryTree* left;
+    struct BinaryTree* right;
+    WD_info* wpt;
+}BinaryTree;
+
+void init_BT(BinaryTree* self)
+{
+    self->left=NULL;
+    self->right=NULL;
+    self->wpt=NULL;
+}
+
+
+void RDF(int totuser, int tottweet, int totfrship)
+{
+    printf("The total of user : %d\n",totuser);
+    printf("The total of tweet : %d\n",tottweet);
+    printf("The total of friendship : %d\n",totfrship);
+}
+
+
+
+
 Adj_h_u* hs_u[100]; // 100으로 나눈 나머지 user
 Adj_h_w* hs_w[100]; // word
 
+int Findminfrd()
+{
+    int minv=987654321;
+    for(int i=0;i<100;i++)
+    {
+        Adj_h_u* tmp = hs_u[i]->next;
+        if(tmp==NULL)
+            continue;
+        while(1)
+        {
+            if(minv>tmp->upt->frdnum)
+                minv=tmp->upt->frdnum;
+            if(tmp->next==NULL)
+                break;
+            else
+                tmp=tmp->next;
+        }
+    }
+    return minv;
+}
 
+int Findmaxfrd()
+{
+    int maxv=0;
+    for(int i=0;i<100;i++)
+    {
+        Adj_h_u* tmp = hs_u[i]->next;
+        if(tmp==NULL)
+            continue;
+        while(1)
+        {
+            if(maxv<tmp->upt->frdnum)
+                maxv=tmp->upt->frdnum;
+            if(tmp->next==NULL)
+                break;
+            else
+                tmp=tmp->next;
+        }
+    }
+    return maxv;
+}
+
+int Findmintweet()
+{
+    int minv=987654321;
+    for(int i=0;i<100;i++)
+    {
+        Adj_h_u* tmp = hs_u[i]->next;
+        if(tmp==NULL)
+            continue;
+        while(1)
+        {
+            if(minv>tmp->upt->tweetnum)
+                minv=tmp->upt->tweetnum;
+            if(tmp->next==NULL)
+                break;
+            else
+                tmp=tmp->next;
+        }
+    }
+    return minv;
+}
+
+int Findmaxtweet()
+{
+    int maxv=0;
+    for(int i=0;i<100;i++)
+    {
+        Adj_h_u* tmp = hs_u[i]->next;
+        if(tmp==NULL)
+            continue;
+        while(1)
+        {
+            if(maxv<tmp->upt->tweetnum)
+            {
+                maxv=tmp->upt->tweetnum;
+            }
+            if(tmp->next==NULL)
+                break;
+            else
+                tmp=tmp->next;
+        }
+    }
+    return maxv;
+}
+
+
+void DisplaySt(int totuser, int tottweet, int totfrship)
+{
+    printf("아래의 값들은 모두 내림한 값들 입니다.\n");
+    printf("Average number of friends : %d\n",totfrship/totuser);
+    printf("Minimum number of friends : %d\n",Findminfrd());
+    printf("Maximum number of friends : %d\n",Findmaxfrd());
+    printf("\n");
+    printf("Average tweets per user : %d\n",tottweet/totuser);
+    printf("Minimum tweets per user : %d\n",Findmintweet());
+    printf("Maximum tweets per user : %d\n",Findmaxtweet());
+}
+
+void Top5_tw_word()
+{
+
+}
 
 int main()
 {
@@ -172,11 +307,11 @@ int main()
     word = fopen("word.txt","rt");
     user = fopen("user.txt","rt");
 
-    long long int totaluser=0, totalfriendship=0, totaltweet=0;
+    int totaluser=0, totalfriendship=0, totaltweet=0;
 
     char id_st[50]={0,};
     char name_st[50]={0,};
-    char tmp[50]={0,};
+    char tmp[100]={0,};
 
 
     for(int i=0;i<100;i++)
@@ -191,9 +326,9 @@ int main()
     while(!feof(user))
     {
         fgets(id_st,50,user);
-        fgets(tmp,50,user); //날짜 저장할 필요 x
+        fgets(tmp,100,user); //날짜 저장할 필요 x
         fgets(name_st,50,user);
-        fgets(tmp,50,user); // 빈줄 저장할 필요 x
+        fgets(tmp,100,user); // 빈줄 저장할 필요 x
 
         US_info* a = (US_info*)malloc(sizeof(US_info));
         init_US(a);
@@ -225,9 +360,9 @@ int main()
     {
 
         fgets(id_st,50,word);
-        fgets(tmp,50,word); //날짜 저장 x
+        fgets(tmp,100,word); //날짜 저장 x
         fgets(word_st,100,word);
-        fgets(tmp,50,word); //빈줄 저장 x
+        fgets(tmp,100,word); //빈줄 저장 x
 
         int hs_u_index=((id_st[8]-'0')+10*(id_st[7]-'0'))%100; // hash를 id를 100으로 나눈 나머지를 index로 취하므로, id는 9자리니까 char형을 int형으로 바꾸어 저장
 
@@ -271,6 +406,8 @@ int main()
 
             add_Adj_id(a->id,id_st); // word 사용한 id linked list로 넣기
             add_hash_w(hs_w[hs_w_index], a);
+
+            totaltweet++;
             continue;
         }
 
@@ -303,8 +440,7 @@ int main()
 
         totaltweet++;
     }
-    printf("%lld %lld\n",totaltweet,totaluser);
-    char fr_id_st[10]={0,};
+    char fr_id_st[50]={0,};
 
     while(!feof(frd))
     {
@@ -312,7 +448,64 @@ int main()
         fgets(fr_id_st,sizeof(fr_id_st),frd); // 친구 id
         fgets(tmp,50,frd); //빈줄 저장x
 
+        int hs_u_index=((fr_id_st[8]-'0')+10*(fr_id_st[7]-'0'))%100; // hash를 id를 100으로 나눈 나머지를 index로 취하므로, id는 9자리니까 char형을 int형으로 바꾸어 저장, 친구 user 존재 확인
+
+        if(hs_u_index<0)
+            hs_u_index+=100;
+
+        if(hs_u[hs_u_index]->next==NULL) // hash index에 등록된 user 없음 --> 등록되지 않은 user면 무효 처리
+        {
+            continue;
+        }
+
+        Adj_h_u* tmp_u=hs_u[hs_u_index]->next; //hashing 에 해당하는 index가 가리키는 곳 참조
+
+        while(1)    // id_st에 해당하는 id에 해당하는 hash index를 참조하여, id를 찾은 뒤 있으면 id vertex의 tweetnum+1해주고 word를 더해준다.
+        {
+            if(strcmp(tmp_u->upt->id,fr_id_st)==0) break;
+            else if(tmp_u->next==NULL)
+                break;
+            else
+                tmp_u=tmp_u->next;
+        }
+
+        if(tmp_u->upt==NULL)    // 등록되지 않은 user 면 무효처리
+            continue;
+
+        //////////////////////////   위는 친구 존재 여부 확인, 없으면 continue
+        //////////////////////////   아래는 user id 존재 여부 확인 있으면 친구 등록
+
+        hs_u_index=((id_st[8]-'0')+10*(id_st[7]-'0'))%100; // hash를 id를 100으로 나눈 나머지를 index로 취하므로, id는 9자리니까 char형을 int형으로 바꾸어 저장
+
+        if(hs_u_index<0)
+            hs_u_index+=100;
+
+        if(hs_u[hs_u_index]->next==NULL) // hash index에 등록된 user 없음 --> 등록되지 않은 user면 무효 처리
+        {
+            continue;
+        }
+
+        tmp_u=hs_u[hs_u_index]->next; //hashing 에 해당하는 index가 가리키는 곳 참조
+
+        while(1)    // id_st에 해당하는 id에 해당하는 hash index를 참조하여, id를 찾은 뒤 있으면 친구추가
+        {
+            if(strcmp(tmp_u->upt->id,id_st)==0)
+            {
+                tmp_u->upt->frdnum++;
+                add_Adj_fr(tmp_u->upt->frd,fr_id_st);
+                totalfriendship++;
+                break;
+            }
+            else if(tmp_u->next==NULL)
+                break;
+            else
+                tmp_u=tmp_u->next;
+        }
+
+        if(tmp_u->upt==NULL)    // 등록되지 않은 user 면 무효처리
+            continue;
     }
+
     int nmenu;
 
     while(1) // Interface
@@ -321,7 +514,7 @@ int main()
         printf("1. display statistics\n");
         printf("2. Top 5 most tweeted words\n");
         printf("3. Top 5 most tweeted users\n");
-        printf("4. Find users who tweeted a word (e.g., ’연세대’)");
+        printf("4. Find users who tweeted a word (e.g., ’연세대’)\n");
         printf("5. Find all people who are friends of the above users\n");
         printf("6. Delete all mentions of a word\n");
         printf("7. Delete all users who mentioned a word\n");
@@ -330,22 +523,14 @@ int main()
         printf("99. Quit\n");
         printf("Select Menu: ");
         scanf("%d",&nmenu);
+
+        if(nmenu==0)
+            RDF(totaluser,totaltweet,totalfriendship);
+        else if(nmenu==1)
+            DisplaySt(totaluser,totaltweet,totalfriendship);
+        else if(nmenu==2)
+            Top5_tw_word();
+//        else if(nmenu==3)
+//            Top5_tw_user();
     }
 }
-/*
-int main()
-{
-    FILE* p;
-    p=fopen("user.txt","rt");
-    char s[15];
-    char name[15];
-    char tmp[50];
-    fgets(s,sizeof(s),p);
-    fgets(tmp,sizeof(tmp),p);
-    fgets(name,sizeof(name),p);
-
-
-
-    printf("%s %s %s",s,tmp,name);
-}
-*/
