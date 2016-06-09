@@ -4,7 +4,7 @@
 #include<malloc.h>
 
 using namespace std;
-
+int cnt; // TOP 5 계산
 
 typedef struct Adj_w{       // US vertex의 멤버로 한 user가 사용한 모든 word 를 point하기 위해 linked list 이용
     char word[100];
@@ -123,7 +123,7 @@ void add_hash_u(Adj_h_u* self, US_info* u) // user 정보 입력 받을 때, id 를 100�
 
 typedef struct WD_info
 {
-    char wd[100];
+    char wd[200];
     int num;
     Adj_id* id;
 }WD_info;
@@ -165,18 +165,72 @@ void add_hash_w(Adj_h_w* self, WD_info* w)
 
 
 /////////////////////// Interface function
-typedef struct BinaryTree
+typedef struct BST
 {
-    struct BinaryTree* left;
-    struct BinaryTree* right;
+    struct BST* left;
+    struct BST* right;
     WD_info* wpt;
-}BinaryTree;
+    US_info* upt;
+}BST;
 
-void init_BT(BinaryTree* self)
+void init_BT(BST* self)
 {
     self->left=NULL;
     self->right=NULL;
     self->wpt=NULL;
+    self->upt=NULL;
+}
+
+BST* BST_insert_wd(BST* tree, WD_info* wpt)
+{
+    BST* a = (BST*)malloc(sizeof(BST));
+    init_BT(a);
+    a->wpt=wpt;
+    if(tree == NULL)
+    {
+        tree = a;
+    }
+    else if(tree->wpt->num > wpt->num)
+    {
+        if(tree->left==NULL)
+            tree->left = a;
+        else
+            BST_insert_wd(tree->left, wpt);
+    }
+    else
+    {
+        if(tree->right==NULL)
+            tree->right = a;
+        else
+            BST_insert_wd(tree->right, wpt);
+    }
+    return tree;
+}
+
+BST* BST_insert_user(BST* tree, US_info* upt)
+{
+    BST* a = (BST*)malloc(sizeof(BST));
+    init_BT(a);
+    a->upt=upt;
+    if(tree == NULL)
+    {
+        tree = a;
+    }
+    else if(tree->upt->tweetnum > upt->tweetnum)
+    {
+        if(tree->left==NULL)
+            tree->left = a;
+        else
+            BST_insert_user(tree->left, upt);
+    }
+    else
+    {
+        if(tree->right==NULL)
+            tree->right = a;
+        else
+            BST_insert_user(tree->right, upt);
+    }
+    return tree;
 }
 
 
@@ -292,8 +346,138 @@ void DisplaySt(int totuser, int tottweet, int totfrship)
     printf("Maximum tweets per user : %d\n",Findmaxtweet());
 }
 
+
+
+
+void Print_top5_wd(BST* tree)
+{
+    if(cnt==5)
+        return;
+    if(tree->right!=NULL)
+        Print_top5_wd(tree->right);
+    if(cnt==5)
+        return;
+    printf("%d번 사용된 단어 word : %s",tree->wpt->num,tree->wpt->wd);
+    cnt++;
+    if(cnt==5)
+        return;
+    if(tree->left!=NULL)
+        Print_top5_wd(tree->left);
+}
+
+
+void Print_top5_user(BST* tree)
+{
+    if(cnt==5)
+        return;
+    if(tree->right!=NULL)
+        Print_top5_user(tree->right);
+    if(cnt==5)
+        return;
+    printf("%d번 Tweet한  user infomation\nid :%sname :%s",tree->upt->tweetnum,tree->upt->id,tree->upt->name);
+    cnt++;
+    if(cnt==5)
+        return;
+    if(tree->left!=NULL)
+        Print_top5_user(tree->left);
+}
+
+
 void Top5_tw_word()
 {
+    BST* tree_wd=NULL;
+    for(int i=0;i<100;i++)
+    {
+        Adj_h_w* tmp = hs_w[i]->next;
+        if(tmp==NULL)
+            continue;
+        while(1)
+        {
+            tree_wd = BST_insert_wd(tree_wd,tmp->wpt);
+            if(tmp->next==NULL)
+                break;
+            else
+                tmp=tmp->next;
+        }
+    }
+    cnt=0;
+    Print_top5_wd(tree_wd);
+}
+
+void Top5_tw_user()
+{
+    BST* tree_user = NULL;
+    for(int i=0;i<100;i++)
+    {
+        Adj_h_u* tmp = hs_u[i]->next;
+        if(tmp==NULL)
+            continue;
+        while(1)
+        {
+            tree_user = BST_insert_user(tree_user,tmp->upt);
+            if(tmp->next==NULL)
+                break;
+            else
+                tmp=tmp->next;
+        }
+    }
+    cnt=0;
+    Print_top5_user(tree_user);
+}
+
+void Finduser_wd()
+{
+    char tmp[200];
+    scanf("%s",tmp);
+    strcat(tmp,"\n");
+
+    int hs_w_index = (tmp[strlen(tmp)-1]+16*tmp[strlen(tmp)-2])%100;
+
+
+    if(hs_w_index<0)
+        hs_w_index+=100;
+
+
+    if(hs_w[hs_w_index]->next==NULL)
+    {
+        printf("단어가 tweet된 적이 없습니다\n");
+        return;
+    }
+
+    Adj_h_w* tmp_w=hs_w[hs_w_index]->next; //hashing 에 해당하는 index 참조
+
+    int i=0;
+
+    while(1)
+    {
+        printf("단어를 Tweet한 사람의 목록\n");
+        if(strcmp(tmp_w->wpt->wd,tmp)==0)
+        {
+            Adj_id* tmp_idp = tmp_w->wpt->id->next;         //hash로 name도 찾을 수 있음. 나중에 처리 할 예정. 우선은 id만
+
+            while(1)
+            {
+                printf("%d. id : %s",i++,tmp_idp->id);
+                if(tmp_idp->next == NULL)
+                    break;
+                tmp_idp=tmp_idp->next;
+            }
+        }
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 }
 
@@ -354,14 +538,13 @@ int main()
         totaluser++;
     }
 
-    char word_st[100];
+    char word_st[200];
 
     while(!feof(word))
     {
-
         fgets(id_st,50,word);
         fgets(tmp,100,word); //날짜 저장 x
-        fgets(word_st,100,word);
+        fgets(word_st,200,word);
         fgets(tmp,100,word); //빈줄 저장 x
 
         int hs_u_index=((id_st[8]-'0')+10*(id_st[7]-'0'))%100; // hash를 id를 100으로 나눈 나머지를 index로 취하므로, id는 9자리니까 char형을 int형으로 바꾸어 저장
@@ -530,7 +713,9 @@ int main()
             DisplaySt(totaluser,totaltweet,totalfriendship);
         else if(nmenu==2)
             Top5_tw_word();
-//        else if(nmenu==3)
-//            Top5_tw_user();
+        else if(nmenu==3)
+            Top5_tw_user();
+        else if(nmenu==4)
+            Finduser_wd();
     }
 }
