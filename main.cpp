@@ -635,9 +635,6 @@ void Delete_user_mention()
     strcat(tmp,"\n");
 
     Adj_h_w* whpt = Find_w_inhash(tmp);
- /*   whpt->prev->next = whpt->next;
-    if(whpt->next!=NULL)
-        whpt->next->prev = whpt->prev;*/
     if(whpt==NULL)
     {
         printf("Tweet되지 않은 단어입니다.\n");
@@ -742,6 +739,10 @@ void Delete_user_mention()
             break;
         idpt=idpt->next;
     }
+    whpt->prev->next = whpt->next;
+    if(whpt->next!=NULL)
+        whpt->next->prev = whpt->prev;
+
 }
 
 
@@ -981,5 +982,14 @@ int main()
             Delete_mention();
         else if(nmenu==7)
             Delete_user_mention();
+        else if(nmenu==99)
+        {
+            printf("프로그램을 종료합니다.\n");
+            break;
+        }
+        else
+        {
+            printf("다시 입력해주세요.\n");
+        }
     }
 }
