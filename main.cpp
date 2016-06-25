@@ -5,6 +5,7 @@
 
 using namespace std;
 int cnt; // TOP 5 계산
+int totaluser=0, totalfriendship=0, totaltweet=0;
 
 
 
@@ -38,12 +39,15 @@ typedef struct Adj_fr
 {
     char fr_id[50];
     struct Adj_fr* next;
+    struct Adj_fr* prev;
+
 }Adj_fr;
 
 void init_Adj_fr(Adj_fr* self)
 {
     strcpy(self->fr_id,"");
     self->next = NULL;
+    self->prev = NULL;
 }
 
 void add_Adj_fr(Adj_fr* self, char* fr_id)
@@ -54,7 +58,9 @@ void add_Adj_fr(Adj_fr* self, char* fr_id)
     while(self->next)
         self=self->next;
     self->next = a;
+    a->prev = self;
 }
+
 
 typedef struct US_info      //US vertex
 {
@@ -63,6 +69,7 @@ typedef struct US_info      //US vertex
     int tweetnum;
     int frdnum;
     Adj_fr* frd;
+    Adj_fr* prev;
 }US_info;
 
 
@@ -78,15 +85,21 @@ void init_US(US_info* self)
     Adj_fr* b = (Adj_fr*)malloc(sizeof(Adj_fr));
     init_Adj_fr(b);
     self->frd = b;
+    Adj_fr* c = (Adj_fr*)malloc(sizeof(Adj_fr));
+    init_Adj_fr(c);
+    self->prev = c;
 }
 
 typedef struct Adj_h_u{       // user id를 입력시 그 US vertex를 찾기 위한 hash
     struct Adj_h_u* next;
+    struct Adj_h_u* prev;
     US_info* upt;
+
 }Adj_h_u;
 
 void init_Adj_h_u(Adj_h_u* self)
 {
+    self->prev = NULL;
     self->next = NULL;
     self->upt = NULL;
 }
@@ -100,6 +113,7 @@ void add_hash_u(Adj_h_u* self, US_info* u) // user 정보 입력 받을 때, id 를 100�
         self=self->next;
 
     self->next = a;
+    a->prev = self;
 }
 
 
@@ -126,6 +140,7 @@ void init_WD(WD_info* self)
 
 typedef struct Adj_h_w{
     struct Adj_h_w* next;
+    struct Adj_h_w* prev;
     WD_info* wpt;
 }Adj_h_w;
 
@@ -133,6 +148,7 @@ void init_Adj_h_w(Adj_h_w* self)
 {
     self->next = NULL;
     self->wpt = NULL;
+    self->prev = NULL;
 }
 
 void add_hash_w(Adj_h_w* self, WD_info* w)
@@ -143,6 +159,7 @@ void add_hash_w(Adj_h_w* self, WD_info* w)
     while(self->next)
         self=self->next;
     self->next = a;
+    a->prev = self;
 }
 
 
@@ -353,17 +370,13 @@ void Print_top5_wd(BST* tree)
 
 void Print_top5_user(BST* tree)
 {
-    if(cnt==5)
-        return;
-    if(tree->right!=NULL)
+    if(tree->right!=NULL&&cnt<5)
         Print_top5_user(tree->right);
-    if(cnt==5)
+    if(cnt>=5)
         return;
     printf("%d번 Tweet한  user infomation\nid :%sname :%s",tree->upt->tweetnum,tree->upt->id,tree->upt->name);
     cnt++;
-    if(cnt==5)
-        return;
-    if(tree->left!=NULL)
+    if(tree->left!=NULL&&cnt<5)
         Print_top5_user(tree->left);
 }
 
@@ -410,12 +423,18 @@ void Top5_tw_user()
     Print_top5_user(tree_user);
 }
 
+
 Adj_h_w* Find_w_inhash(char* tmp)
 {
     strcat(tmp,"\n");
-
-    int hs_w_index = (tmp[strlen(tmp)-1]+16*tmp[strlen(tmp)-2]+256*tmp[strlen(tmp)-3])%1000;
-    if(hs_w_index<0)
+    int hs_w_index=0;
+    for(int i=strlen(tmp)-1;i>=0;i--)
+    {
+        hs_w_index*=10;
+        hs_w_index+=tmp[i];
+    }
+    hs_w_index%=1000;
+    while(hs_w_index<0)
         hs_w_index+=1000;
 
     if(hs_w[hs_w_index]->next==NULL)
@@ -425,7 +444,6 @@ Adj_h_w* Find_w_inhash(char* tmp)
 
     Adj_h_w* tmp_w=hs_w[hs_w_index]->next; //hashing 에 해당하는 index 참조
 
-    int i=0;
 
     while(tmp_w)
     {
@@ -435,13 +453,14 @@ Adj_h_w* Find_w_inhash(char* tmp)
         }
         tmp_w=tmp_w->next;
     }
+    return NULL;
 }
 
 
 Adj_h_u* Find_u_inhash(char* tmp)
 {
 
-    int hs_u_index = (tmp[strlen(tmp)-1]+16*tmp[strlen(tmp)-2]+256*tmp[strlen(tmp)-3])%1000;
+    int hs_u_index = ((tmp[strlen(tmp)-1]+16*tmp[strlen(tmp)-2]+256*tmp[strlen(tmp)-3]))%1000;
     if(hs_u_index<0)
         hs_u_index+=1000;
 
@@ -452,7 +471,6 @@ Adj_h_u* Find_u_inhash(char* tmp)
 
     Adj_h_u* tmp_u=hs_u[hs_u_index]->next; //hashing 에 해당하는 index 참조
 
-    int i=0;
 
     while(tmp_u)
     {
@@ -462,14 +480,12 @@ Adj_h_u* Find_u_inhash(char* tmp)
         }
         tmp_u=tmp_u->next;
     }
+    return NULL;
 }
-
-
-
 
 void Finduser_wd()
 {
-    char tmp[200];
+    char tmp[200]={0,};
     printf("단어를 입력하세요 : ");
     scanf("%s",tmp);
     Adj_h_w* hpt = Find_w_inhash(tmp);
@@ -498,7 +514,7 @@ void Finduser_wd()
 
 void Find_friend_wd()
 {
-    char tmp[200];
+    char tmp[200]={0,};
     printf("단어를 입력하세요 : ");
     scanf("%s",tmp);
     Adj_h_w* whpt = Find_w_inhash(tmp);
@@ -541,9 +557,76 @@ void Find_friend_wd()
 }
 
 
+void Delete_mention()
+{
+    char tmp[200];
+    printf("단어를 입력하세요 : ");
+    scanf("%s",tmp);
+    Adj_h_w* whpt = Find_w_inhash(tmp);
 
+    if(whpt==NULL)
+    {
+        printf("Tweet되지 않은 단어입니다.\n");
+        return;
+    }
 
+    totaltweet-=whpt->wpt->num;
+    whpt->prev->next = whpt->next;
+    whpt->next->prev = whpt->prev;
+}
 
+void Delete_user_mention()
+{
+    char tmp[200];
+    printf("단어를 입력하세요 : ");
+    scanf("%s",tmp);
+
+    Adj_h_w* whpt = Find_w_inhash(tmp);
+    if(whpt==NULL)
+    {
+        printf("Tweet되지 않은 단어입니다.\n");
+        return;
+    }
+    Adj_id* idpt = whpt->wpt->id->next;
+
+    while(idpt)
+    {
+        Adj_h_u* uhpt = Find_u_inhash(idpt->id);
+        totalfriendship-=uhpt->upt->frdnum;
+        totaluser--;
+        uhpt->prev->next = uhpt->next;
+        uhpt->next->prev = uhpt->prev;
+
+        Adj_fr* frd = uhpt->upt->prev->next;
+        while(frd)
+        {
+            Adj_h_u* fr_upht = Find_u_inhash(frd->fr_id);
+            Adj_fr* frpt = fr_upht->upt->frd->next;
+
+            while(frpt)
+            {
+                if(frpt->next==NULL)
+                {
+                    frpt->prev->next = NULL;
+                    break;
+                }
+                if(strcmp(frpt->fr_id,uhpt->upt->id)==0)
+                {
+                    frpt->prev->next = frpt->next;
+                    frpt->next->prev = frpt->prev;
+                }
+                frpt=frpt->next;
+            }
+            if(frd->next==NULL)
+                break;
+            frd=frd->next;
+
+        }
+        if(idpt->next==NULL)
+            break;
+        idpt=idpt->next;
+    }
+}
 
 
 
@@ -560,7 +643,6 @@ int main()
     word = fopen("word.txt","rt");
     user = fopen("user.txt","rt");
 
-    int totaluser=0, totalfriendship=0, totaltweet=0;
 
     char id_st[50]={0,};
     char name_st[50]={0,};
@@ -626,6 +708,8 @@ int main()
             continue;
         }
 
+
+
         Adj_h_u* tmp_u=hs_u[hs_u_index]->next; //hashing 에 해당하는 index가 가리키는 곳 참조
         while(1)    // id_st에 해당하는 id에 해당하는 hash index를 참조하여, id를 찾은 뒤 있으면 id vertex의 tweetnum+1해주고 word를 더해준다.
         {
@@ -643,10 +727,17 @@ int main()
         if(tmp_u->upt==NULL)    // 등록되지 않은 user 면 무효처리
             continue;
 
-        int hs_w_index = (word_st[strlen(word_st)-1]+16*word_st[strlen(word_st)-2]+256*word_st[strlen(word_st)-3])%1000;    // word 문자열 값을 100으로 나눈 나머지이기 때문에, 마지막 두 글자에 대한 16진법 값을 계산후 100으로 나눈 나머지
-
-        if(hs_w_index<0)
+        int hs_w_index=0;
+        for(int i=strlen(word_st)-1;i>=0;i--)
+        {
+            hs_w_index*=10;
+            hs_w_index+=word_st[i];
+        }
+        hs_w_index%=1000;
+        while(hs_w_index<0)
             hs_w_index+=1000;
+
+
 
 
         if(hs_w[hs_w_index]->next==NULL)
@@ -668,8 +759,20 @@ int main()
         {
             if(strcmp(tmp_w->wpt->wd,word_st)==0) //해당하는 index에 이전에 이 단어가 나온적이 있으면, user id추가, num+1 해줌
             {
+                int state=0;
                 tmp_w->wpt->num++;
-                add_Adj_id(tmp_w->wpt->id, id_st);
+                Adj_id* idtmp = tmp_w->wpt->id->next;
+                while(idtmp)
+                {
+                    if(strcmp(idtmp->id,id_st)==0)
+                    {
+                        state=1;
+                        break;
+                    }
+                    idtmp = idtmp->next;
+                }
+                if(state==0)
+                    add_Adj_id(tmp_w->wpt->id, id_st);
                 break;
             }
             else if(tmp_w->next==NULL)               //해당 index에 해당하는 단어 없으면 추가
@@ -695,66 +798,34 @@ int main()
 
     while(!feof(frd))
     {
-        fgets(fr_id_st,sizeof(id_st),frd); //  주체 id
-        fgets(id_st,sizeof(fr_id_st),frd); // 친구 id
+        fgets(fr_id_st,sizeof(id_st),frd); //  친구 id
+        fgets(id_st,sizeof(fr_id_st),frd); // 주체 id
         fgets(tmp,50,frd); //빈줄 저장x
 
-        int hs_u_index=((fr_id_st[strlen(fr_id_st)-1])+16*(fr_id_st[strlen(fr_id_st)-2])+256*(fr_id_st[strlen(fr_id_st)-3]))%1000; // hash를 id를 100으로 나눈 나머지를 index로 취하므로, id는 9자리니까 char형을 int형으로 바꾸어 저장, 친구 user 존재 확인
 
-        if(hs_u_index<0)
-            hs_u_index+=1000;
-
-        if(hs_u[hs_u_index]->next==NULL) // hash index에 등록된 user 없음 --> 등록되지 않은 user면 무효 처리
-        {
-            continue;
-        }
-
-        Adj_h_u* tmp_u=hs_u[hs_u_index]->next; //hashing 에 해당하는 index가 가리키는 곳 참조
-
-        while(1)
-        {
-            if(strcmp(tmp_u->upt->id,fr_id_st)==0) break;
-            else if(tmp_u->next==NULL)
-                break;
-            else
-                tmp_u=tmp_u->next;
-        }
-
-        if(tmp_u->upt==NULL)    // 등록되지 않은 user 면 무효처리
+        Adj_h_u* tmp_u = Find_u_inhash(id_st);
+        if(tmp_u == NULL)
             continue;
 
-        //////////////////////////   위는 친구 존재 여부 확인, 없으면 continue
-        //////////////////////////   아래는 user id 존재 여부 확인 있으면 친구 등록
+        int state=0;
 
-        hs_u_index=((id_st[strlen(id_st)-1])+16*(id_st[strlen(id_st)-2])+256*(id_st[strlen(id_st)-3]))%1000; // hash를 id를 100으로 나눈 나머지를 index로 취하므로, id는 9자리니까 char형을 int형으로 바꾸어 저장
-
-        if(hs_u_index<0)
-            hs_u_index+=1000;
-
-        if(hs_u[hs_u_index]->next==NULL) // hash index에 등록된 user 없음 --> 등록되지 않은 user면 무효 처리
+        Adj_fr* frpt = tmp_u->upt->frd->next;
+        while(frpt)
         {
-            continue;
-        }
-
-        tmp_u=hs_u[hs_u_index]->next; //hashing 에 해당하는 index가 가리키는 곳 참조
-
-        while(1)    // id_st에 해당하는 id에 해당하는 hash index를 참조하여, id를 찾은 뒤 있으면 친구추가
-        {
-            if(strcmp(tmp_u->upt->id,id_st)==0)
+            if(strcmp(frpt->fr_id,fr_id_st)==0)
             {
-                tmp_u->upt->frdnum++;
-                add_Adj_fr(tmp_u->upt->frd,fr_id_st);
-                totalfriendship++;
+                state=1;
                 break;
             }
-            else if(tmp_u->next==NULL)
-                break;
-            else
-                tmp_u=tmp_u->next;
+            frpt=frpt->next;
         }
-
-        if(tmp_u->upt==NULL)    // 등록되지 않은 user 면 무효처리
-            continue;
+        if(state==0)
+        {
+            tmp_u->upt->frdnum++;
+            add_Adj_fr(Find_u_inhash(id_st)->upt->frd, fr_id_st);
+            add_Adj_fr(Find_u_inhash(fr_id_st)->upt->prev,id_st);
+            totalfriendship++;
+        }
     }
 
     int nmenu;
@@ -789,5 +860,9 @@ int main()
             Finduser_wd();
         else if(nmenu==5)
             Find_friend_wd();
+        else if(nmenu==6)
+            Delete_mention();
+        else if(nmenu==7)
+            Delete_user_mention();
     }
 }
