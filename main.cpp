@@ -2,6 +2,7 @@
 #include<stdio.h>
 #include<string.h>
 #include<malloc.h>
+#include<conio.h>
 
 using namespace std;
 int cnt; // TOP 5 계산
@@ -9,7 +10,7 @@ int totaluser=0, totalfriendship=0, totaltweet=0;
 
 
 typedef struct Adj_w{       // US vertex의 멤버로 한 user가 사용한 모든 word 를 point하기 위해 linked list 이용
-    char word[200];
+    char word[500];
     struct Adj_w* next;
     struct Adj_w* prev;
 }Adj_w;
@@ -36,7 +37,7 @@ void add_Adj_w(Adj_w* self,char* wd)
 
 
 typedef struct Adj_id{      //WD vertex의 멤버로 한 word를 사용한 모든 user id를 point하기 위해 linked list 이용
-    char id[50];
+    char id[100];
     struct Adj_id* next;
     struct Adj_id* prev;
 }Adj_id;
@@ -63,7 +64,7 @@ void add_Adj_id(Adj_id* self,char* id)
 
 typedef struct Adj_fr
 {
-    char fr_id[50];
+    char fr_id[100];
     struct Adj_fr* next;
     struct Adj_fr* prev;
 
@@ -90,8 +91,8 @@ void add_Adj_fr(Adj_fr* self, char* fr_id)
 
 typedef struct US_info      //US vertex
 {
-    char id[50];
-    char name[50];
+    char id[100];
+    char name[100];
     int tweetnum;
     int frdnum;
     Adj_fr* frd;
@@ -150,7 +151,7 @@ void add_hash_u(Adj_h_u* self, US_info* u) // user 정보 입력 받을 때, id 를 100�
 
 
 typedef struct WD_info{
-    char wd[200];
+    char wd[500];
     int num;
     Adj_id* id;
 }WD_info;
@@ -275,13 +276,13 @@ void RDF(int totuser, int tottweet, int totfrship)
 
 
 
-Adj_h_u* hs_u[1000]; // 100으로 나눈 나머지 user
-Adj_h_w* hs_w[1000]; // word
+Adj_h_u* hs_u[100000]; // 100으로 나눈 나머지 user
+Adj_h_w* hs_w[100000]; // word
 
 int Findminfrd()
 {
     int minv=987654321;
-    for(int i=0;i<1000;i++)
+    for(int i=0;i<100000;i++)
     {
         Adj_h_u* tmp = hs_u[i]->next;
         if(tmp==NULL)
@@ -302,7 +303,7 @@ int Findminfrd()
 int Findmaxfrd()
 {
     int maxv=0;
-    for(int i=0;i<1000;i++)
+    for(int i=0;i<100000;i++)
     {
         Adj_h_u* tmp = hs_u[i]->next;
         if(tmp==NULL)
@@ -323,7 +324,7 @@ int Findmaxfrd()
 int Findmintweet()
 {
     int minv=987654321;
-    for(int i=0;i<1000;i++)
+    for(int i=0;i<100000;i++)
     {
         Adj_h_u* tmp = hs_u[i]->next;
         if(tmp==NULL)
@@ -344,7 +345,7 @@ int Findmintweet()
 int Findmaxtweet()
 {
     int maxv=0;
-    for(int i=0;i<1000;i++)
+    for(int i=0;i<100000;i++)
     {
         Adj_h_u* tmp = hs_u[i]->next;
         if(tmp==NULL)
@@ -382,17 +383,13 @@ void DisplaySt(int totuser, int tottweet, int totfrship)
 
 void Print_top5_wd(BST* tree)
 {
-    if(cnt==5)
-        return;
-    if(tree->right!=NULL)
+    if(tree->right!=NULL&&cnt<5)
         Print_top5_wd(tree->right);
-    if(cnt==5)
+    if(cnt>=5)
         return;
     printf("%d번 사용된 단어 word : %s",tree->wpt->num,tree->wpt->wd);
     cnt++;
-    if(cnt==5)
-        return;
-    if(tree->left!=NULL)
+    if(tree->left!=NULL&&cnt<5)
         Print_top5_wd(tree->left);
 }
 
@@ -413,7 +410,7 @@ void Print_top5_user(BST* tree)
 void Top5_tw_word()
 {
     BST* tree_wd=NULL;
-    for(int i=0;i<1000;i++)
+    for(int i=0;i<100000;i++)
     {
         Adj_h_w* tmp = hs_w[i]->next;
         if(tmp==NULL)
@@ -434,7 +431,7 @@ void Top5_tw_word()
 void Top5_tw_user()
 {
     BST* tree_user = NULL;
-    for(int i=0;i<1000;i++)
+    for(int i=0;i<100000;i++)
     {
         Adj_h_u* tmp = hs_u[i]->next;
         if(tmp==NULL)
@@ -461,9 +458,9 @@ Adj_h_w* Find_w_inhash(char* tmp)
         hs_w_index*=10;
         hs_w_index+=tmp[i];
     }
-    hs_w_index%=1000;
+    hs_w_index%=100000;
     while(hs_w_index<0)
-        hs_w_index+=1000;
+        hs_w_index+=100000;
     if(hs_w[hs_w_index]->next==NULL)
     {
         return NULL;
@@ -486,9 +483,17 @@ Adj_h_w* Find_w_inhash(char* tmp)
 Adj_h_u* Find_u_inhash(char* tmp)
 {
 
-    int hs_u_index = ((tmp[strlen(tmp)-1]+16*tmp[strlen(tmp)-2]+256*tmp[strlen(tmp)-3]))%1000;
-    if(hs_u_index<0)
-        hs_u_index+=1000;
+    int hs_u_index=0;
+
+    for(int i=strlen(tmp)-1;i>=0;i--)
+    {
+        hs_u_index*=10;
+        hs_u_index+=tmp[i];
+    }
+    hs_u_index%=100000;
+
+    while(hs_u_index<0)
+        hs_u_index+=100000;
 
     if(hs_u[hs_u_index]->next==NULL)
     {
@@ -761,12 +766,12 @@ int main()
     user = fopen("user.txt","rt");
 
 
-    char id_st[50]={0,};
-    char name_st[50]={0,};
-    char tmp[100]={0,};
+    char id_st[100]={0,};
+    char name_st[100]={0,};
+    char tmp[200]={0,};
 
 
-    for(int i=0;i<1000;i++)
+    for(int i=0;i<100000;i++)
     {
         hs_u[i] = (Adj_h_u*)malloc(sizeof(Adj_h_u));
         init_Adj_h_u(hs_u[i]);
@@ -777,10 +782,10 @@ int main()
 
     while(!feof(user))
     {
-        fgets(id_st,50,user);
-        fgets(tmp,100,user); //날짜 저장할 필요 x
-        fgets(name_st,50,user);
-        fgets(tmp,100,user); // 빈줄 저장할 필요 x
+        fgets(id_st,100,user);
+        fgets(tmp,200,user); //날짜 저장할 필요 x
+        fgets(name_st,100,user);
+        fgets(tmp,200,user); // 빈줄 저장할 필요 x
 
         US_info* a = (US_info*)malloc(sizeof(US_info));
         init_US(a);
@@ -788,9 +793,18 @@ int main()
         strcpy(a->id,id_st);
         strcpy(a->name,name_st);
 
-        int hs_u_index=((id_st[strlen(id_st)-1])+16*(id_st[strlen(id_st)-2])+256*(id_st[strlen(id_st)-3]))%1000; // hash를 id를 100으로 나눈 나머지를 index로 취하므로, id는 9자리니까 char형을 int형으로 바꾸어 저장
-        if(hs_u_index<0)
-            hs_u_index+=1000;
+        int hs_u_index=0;
+
+        for(int i=strlen(id_st)-1;i>=0;i--)
+        {
+            hs_u_index*=10;
+            hs_u_index+=id_st[i];
+        }
+
+        hs_u_index%=100000;
+
+        while(hs_u_index<0)
+            hs_u_index+=100000;
 
         Adj_h_u* tmp = hs_u[hs_u_index];
         while(1)
@@ -806,44 +820,25 @@ int main()
         totaluser++;
     }
 
-    char word_st[200];
+    char word_st[500];
 
     while(!feof(word))
     {
-        fgets(id_st,50,word);
-        fgets(tmp,100,word); //날짜 저장 x
-        fgets(word_st,200,word);
-        fgets(tmp,100,word); //빈줄 저장 x
+        fgets(id_st,100,word);
+        fgets(tmp,200,word); //날짜 저장 x
+        fgets(word_st,500,word);
+        fgets(tmp,200,word); //빈줄 저장 x
 
-        int hs_u_index=((id_st[strlen(id_st)-1])+16*(id_st[strlen(id_st)-2])+256*(id_st[strlen(id_st)-3]))%1000; // hash를 id를 100으로 나눈 나머지를 index로 취하므로, id는 9자리니까 char형을 int형으로 바꾸어 저장
 
-        if(hs_u_index<0)
-            hs_u_index+=1000;
-
-        if(hs_u[hs_u_index]->next==NULL) // hash index에 등록된 user 없음 --> 등록되지 않은 user면 무효 처리
+        Adj_h_u* tmp_u = Find_u_inhash(id_st);
+        if(tmp_u==NULL)
         {
+            printf("%s",id_st);
             continue;
         }
 
-
-
-        Adj_h_u* tmp_u=hs_u[hs_u_index]->next; //hashing 에 해당하는 index가 가리키는 곳 참조
-        while(1)    // id_st에 해당하는 id에 해당하는 hash index를 참조하여, id를 찾은 뒤 있으면 id vertex의 tweetnum+1해주고 word를 더해준다.
-        {
-            if(strcmp(tmp_u->upt->id,id_st)==0)
-            {
-                tmp_u->upt->tweetnum++;
-                add_Adj_w(tmp_u->upt->wd, word_st);
-                break;
-            }
-            else if(tmp_u->next==NULL)
-                break;
-            else
-                tmp_u=tmp_u->next;
-        }
-
-        if(tmp_u->upt==NULL)    // 등록되지 않은 user 면 무효처리
-            continue;
+        tmp_u->upt->tweetnum++;
+        add_Adj_w(tmp_u->upt->wd, word_st);
 
         int hs_w_index=0;
         for(int i=strlen(word_st)-1;i>=0;i--)
@@ -851,9 +846,9 @@ int main()
             hs_w_index*=10;
             hs_w_index+=word_st[i];
         }
-        hs_w_index%=1000;
+        hs_w_index%=100000;
         while(hs_w_index<0)
-            hs_w_index+=1000;
+            hs_w_index+=100000;
 
 
 
@@ -912,13 +907,13 @@ int main()
 
         totaltweet++;
     }
-    char fr_id_st[50]={0,};
+    char fr_id_st[100]={0,};
 
     while(!feof(frd))
     {
-        fgets(fr_id_st,sizeof(id_st),frd); //  친구 id
-        fgets(id_st,sizeof(fr_id_st),frd); // 주체 id
-        fgets(tmp,50,frd); //빈줄 저장x
+        fgets(fr_id_st,100,frd); //  친구 id
+        fgets(id_st,100,frd); // 주체 id
+        fgets(tmp,200,frd); //빈줄 저장x
 
 
         Adj_h_u* tmp_u = Find_u_inhash(id_st);
@@ -967,21 +962,53 @@ int main()
         scanf("%d",&nmenu);
 
         if(nmenu==0)
+        {
+            system("cls");
             RDF(totaluser,totaltweet,totalfriendship);
+            printf("\n");
+        }
         else if(nmenu==1)
+        {
+            system("cls");
             DisplaySt(totaluser,totaltweet,totalfriendship);
+            printf("\n");
+        }
         else if(nmenu==2)
+        {
+            system("cls");
             Top5_tw_word();
+            printf("\n");
+        }
         else if(nmenu==3)
+        {
+            system("cls");
             Top5_tw_user();
+            printf("\n");
+        }
         else if(nmenu==4)
+        {
+            system("cls");
             Finduser_wd();
+            printf("\n");
+        }
         else if(nmenu==5)
+        {
+            system("cls");
             Find_friend_wd();
+            printf("\n");
+        }
         else if(nmenu==6)
+        {
+            system("cls");
             Delete_mention();
+            printf("\n");
+        }
         else if(nmenu==7)
+        {
+            system("cls");
             Delete_user_mention();
+            printf("\n");
+        }
         else if(nmenu==99)
         {
             printf("프로그램을 종료합니다.\n");
@@ -989,6 +1016,7 @@ int main()
         }
         else
         {
+            system("cls");
             printf("다시 입력해주세요.\n");
         }
     }
