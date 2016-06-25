@@ -8,6 +8,29 @@ int cnt; // TOP 5 계산
 int totaluser=0, totalfriendship=0, totaltweet=0;
 
 
+typedef struct Adj_w{       // US vertex의 멤버로 한 user가 사용한 모든 word 를 point하기 위해 linked list 이용
+    char word[200];
+    struct Adj_w* next;
+    struct Adj_w* prev;
+}Adj_w;
+
+void init_Adj_w(Adj_w* self)
+{
+    strcpy(self->word,"");
+    self->next = NULL;
+    self->prev = NULL;
+}
+
+void add_Adj_w(Adj_w* self,char* wd)
+{
+    Adj_w* a = (Adj_w*)malloc(sizeof(Adj_w));
+    init_Adj_w(a);
+    strcpy(a->word,wd);
+    while(self->next)
+        self=self->next;
+    self->next = a;
+    a->prev = self;
+}
 
 
 
@@ -15,6 +38,7 @@ int totaluser=0, totalfriendship=0, totaltweet=0;
 typedef struct Adj_id{      //WD vertex의 멤버로 한 word를 사용한 모든 user id를 point하기 위해 linked list 이용
     char id[50];
     struct Adj_id* next;
+    struct Adj_id* prev;
 }Adj_id;
 
 
@@ -22,6 +46,7 @@ void init_Adj_id(Adj_id* self)
 {
     strcpy(self->id,"");
     self->next = NULL;
+    self->prev = NULL;
 }
 
 
@@ -33,6 +58,7 @@ void add_Adj_id(Adj_id* self,char* id)
     while(self->next)
         self=self->next;
     self->next = a;
+    a->prev = self;
 }
 
 typedef struct Adj_fr
@@ -70,6 +96,7 @@ typedef struct US_info      //US vertex
     int frdnum;
     Adj_fr* frd;
     Adj_fr* prev;
+    Adj_w* wd; // user가 사용한 모든 단어들은 linked list로 저장한다.
 }US_info;
 
 
@@ -80,6 +107,10 @@ void init_US(US_info* self)
     strcpy(self->name,"");
     self->tweetnum=0;
     self->frdnum=0;
+
+    Adj_w* a = (Adj_w*)malloc(sizeof(Adj_w));
+    init_Adj_w(a);
+    self->wd = a;
 
 
     Adj_fr* b = (Adj_fr*)malloc(sizeof(Adj_fr));
@@ -118,8 +149,7 @@ void add_hash_u(Adj_h_u* self, US_info* u) // user 정보 입력 받을 때, id 를 100�
 
 
 
-typedef struct WD_info
-{
+typedef struct WD_info{
     char wd[200];
     int num;
     Adj_id* id;
@@ -133,7 +163,6 @@ void init_WD(WD_info* self)
 
     Adj_id* a = (Adj_id*)malloc(sizeof(Adj_id));
     init_Adj_id(a);
-
     self->id = a;
 }
 
@@ -426,7 +455,6 @@ void Top5_tw_user()
 
 Adj_h_w* Find_w_inhash(char* tmp)
 {
-    strcat(tmp,"\n");
     int hs_w_index=0;
     for(int i=strlen(tmp)-1;i>=0;i--)
     {
@@ -436,12 +464,10 @@ Adj_h_w* Find_w_inhash(char* tmp)
     hs_w_index%=1000;
     while(hs_w_index<0)
         hs_w_index+=1000;
-
     if(hs_w[hs_w_index]->next==NULL)
     {
         return NULL;
     }
-
     Adj_h_w* tmp_w=hs_w[hs_w_index]->next; //hashing 에 해당하는 index 참조
 
 
@@ -488,6 +514,7 @@ void Finduser_wd()
     char tmp[200]={0,};
     printf("단어를 입력하세요 : ");
     scanf("%s",tmp);
+    strcat(tmp,"\n");
     Adj_h_w* hpt = Find_w_inhash(tmp);
 
     if(hpt==NULL)
@@ -517,6 +544,7 @@ void Find_friend_wd()
     char tmp[200]={0,};
     printf("단어를 입력하세요 : ");
     scanf("%s",tmp);
+    strcat(tmp,"\n");
     Adj_h_w* whpt = Find_w_inhash(tmp);
 
     if(whpt==NULL)
@@ -562,6 +590,7 @@ void Delete_mention()
     char tmp[200];
     printf("단어를 입력하세요 : ");
     scanf("%s",tmp);
+    strcat(tmp,"\n");
     Adj_h_w* whpt = Find_w_inhash(tmp);
 
     if(whpt==NULL)
@@ -572,7 +601,30 @@ void Delete_mention()
 
     totaltweet-=whpt->wpt->num;
     whpt->prev->next = whpt->next;
+    if(whpt->next!=NULL)
     whpt->next->prev = whpt->prev;
+
+    Adj_id* idpt = whpt->wpt->id->next;
+    while(idpt)
+    {
+        Adj_h_u* uhpt = Find_u_inhash(idpt->id);
+        Adj_w* wpt = uhpt->upt->wd->next;
+        while(wpt)
+        {
+            if(strcmp(wpt->word,whpt->wpt->wd)==0)
+            {
+                wpt->prev->next = wpt->next;
+                if(wpt->next!=NULL)
+                    wpt->next->prev = wpt->prev;
+            }
+            if(wpt->next==NULL)
+                break;
+            wpt=wpt->next;
+        }
+        if(idpt->next==NULL)
+            break;
+        idpt=idpt->next;
+    }
 }
 
 void Delete_user_mention()
@@ -580,40 +632,103 @@ void Delete_user_mention()
     char tmp[200];
     printf("단어를 입력하세요 : ");
     scanf("%s",tmp);
+    strcat(tmp,"\n");
 
     Adj_h_w* whpt = Find_w_inhash(tmp);
+ /*   whpt->prev->next = whpt->next;
+    if(whpt->next!=NULL)
+        whpt->next->prev = whpt->prev;*/
     if(whpt==NULL)
     {
         printf("Tweet되지 않은 단어입니다.\n");
         return;
     }
+
     Adj_id* idpt = whpt->wpt->id->next;
 
     while(idpt)
     {
+        //언급한 id마다 제거, friendship감소, 유저감소
         Adj_h_u* uhpt = Find_u_inhash(idpt->id);
         totalfriendship-=uhpt->upt->frdnum;
         totaluser--;
         uhpt->prev->next = uhpt->next;
-        uhpt->next->prev = uhpt->prev;
+        if(uhpt->next!=NULL)
+            uhpt->next->prev = uhpt->prev;
+        //id가 tweet한 단어 먼저 제거
+        //단어 개수감소,
+        Adj_w* wdpt = uhpt->upt->wd->next;
+        while(wdpt)
+        {
+            Adj_h_w* whpt2 = Find_w_inhash(wdpt->word);
+            if(whpt2->wpt->num>0)
+            {
+                whpt2->wpt->num--;
+                totaltweet--;
+            }
+            Adj_id* id_tmp = whpt2->wpt->id->next;
+
+            while(id_tmp)
+            {
+                if(strcmp(id_tmp->id,idpt->id)==0)
+                {
+                    id_tmp->prev->next=id_tmp->next;
+                    if(id_tmp->next!=NULL)
+                        id_tmp->next->prev=id_tmp->prev;
+                }
+                if(id_tmp->next==NULL)
+                    break;
+                id_tmp=id_tmp->next;
+            }
+            if(wdpt->next==NULL)
+                break;
+            wdpt=wdpt->next;
+        }
+        //친구관계 삭제
+        Adj_fr* prev_frd = uhpt->upt->frd->next;
+        while(prev_frd)
+        {
+            Adj_h_u* prev_upht = Find_u_inhash(prev_frd->fr_id);
+            Adj_fr* prevpt = prev_upht->upt->prev->next;
+
+            while(prevpt)
+            {
+                if(strcmp(prevpt->fr_id,uhpt->upt->id)==0)
+                {
+                    prevpt->prev->next = prevpt->next;
+                    if(prevpt->next!=NULL)
+                        prevpt->next->prev=prevpt->prev;
+                }
+                if(prevpt->next==NULL)
+                    break;
+                prevpt=prevpt->next;
+            }
+            if(prev_frd->next==NULL)
+                break;
+            prev_frd=prev_frd->next;
+        }
+
+
 
         Adj_fr* frd = uhpt->upt->prev->next;
         while(frd)
         {
+//            printf("%s",frd->fr_id);
             Adj_h_u* fr_upht = Find_u_inhash(frd->fr_id);
             Adj_fr* frpt = fr_upht->upt->frd->next;
 
             while(frpt)
             {
-                if(frpt->next==NULL)
-                {
-                    frpt->prev->next = NULL;
-                    break;
-                }
                 if(strcmp(frpt->fr_id,uhpt->upt->id)==0)
                 {
                     frpt->prev->next = frpt->next;
-                    frpt->next->prev = frpt->prev;
+                    if(frpt->next!=NULL)
+                        frpt->next->prev = frpt->prev;
+                }
+                if(frpt->next==NULL)
+                {
+                 //   frpt->prev->next = NULL;
+                    break;
                 }
                 frpt=frpt->next;
             }
@@ -622,6 +737,7 @@ void Delete_user_mention()
             frd=frd->next;
 
         }
+
         if(idpt->next==NULL)
             break;
         idpt=idpt->next;
@@ -716,6 +832,7 @@ int main()
             if(strcmp(tmp_u->upt->id,id_st)==0)
             {
                 tmp_u->upt->tweetnum++;
+                add_Adj_w(tmp_u->upt->wd, word_st);
                 break;
             }
             else if(tmp_u->next==NULL)
